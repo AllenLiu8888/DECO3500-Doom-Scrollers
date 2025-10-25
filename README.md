@@ -184,4 +184,4 @@ Both firmwares share the same logic; the only differences are in the top configu
 ## 📘 Documentation
 
 For wiring diagrams, timing charts, and detailed source notes,
-please visit the Project Wiki (./wiki).
+please visit the Project Wiki ([./wiki](https://github.com/AllenLiu8888/DECO3500-Doom-Scrollers.wiki.git)).
