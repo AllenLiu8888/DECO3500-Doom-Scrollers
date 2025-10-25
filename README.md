@@ -77,7 +77,7 @@ Baud Rate: 115200
 
 ---
 
-## 🔋 External Power & Wiring (Strongly Recommended)
+## 🔋 External Power & Wiring
 
 - Use a 4×AA battery pack (~6 V) to power the servo and buzzer only; power the ESP32 separately (USB or a 5 V module).
 - Breadboard rails:
@@ -137,7 +137,8 @@ Both firmwares share the same logic; the only differences are in the top configu
 2. Press the button on each ESP32 to enter READY.
 3. Place your phone on the load cell to start focus.
 4. Focus together for the configured duration.
-5. If one picks up their phone, both devices react; put the phone back to resume.
+5. If either user picks up their phone, both devices react (both buzz). The user who lifted the phone also triggers the servo “slapper” on their device as a penalty. Put the phone back to return to WAIT_PHONE; the focus timer resets.
+6. During BREAK, users are free to use their phones.
 
 ### LCD During Each Stage
 
@@ -158,7 +159,6 @@ Both firmwares share the same logic; the only differences are in the top configu
 - Real‑time dual‑device synchronization
 - Smooth, non‑blocking LCD updates
 - EMA filtering for stable HX711 readings
-- Modular logic for focus / alert / break cycles
 
 ---
 
@@ -166,7 +166,7 @@ Both firmwares share the same logic; the only differences are in the top configu
 
 - Multi‑user group focus; move to Wi‑Fi networking with a server‑hosted database to replace ESP‑NOW and support multi‑user sessions
 - Bluetooth/app/web control to replace the physical button and add social features
-- Adjustable focus/break durations, power management & battery optimizations
+- Power management & battery optimizations
 
 ---
 
@@ -185,7 +185,5 @@ Both firmwares share the same logic; the only differences are in the top configu
 
 For wiring diagrams, timing charts, and detailed source notes,
 please visit the Project Wiki (./wiki).
-
----
 
 > "When focus becomes social, distraction turns into cooperation."
