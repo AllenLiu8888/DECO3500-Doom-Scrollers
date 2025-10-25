@@ -41,8 +41,8 @@ After the phone is replaced, both systems return to the waiting state and can re
 
 | Component | ESP32 Pin | Power |
 |-----------|-----------|-------|
-| HX711 DOUT | GPIO 16 | 5 V |
-| HX711 SCK | GPIO 4 | 5 V |
+| HX711 DOUT | GPIO 16 | 3.3 V |
+| HX711 SCK | GPIO 4 | 3.3 V |
 | Servo | GPIO 18 | External (battery pack) |
 | Buzzer | GPIO 19 | External (battery pack) |
 | Button | GPIO 23 | 3.3 V (INPUT_PULLUP) |
@@ -69,7 +69,7 @@ Install via Arduino IDE → Tools → Manage Libraries...
 ## 🖥️ Arduino IDE Setup
 
 Board: ESP32 Dev Module
-Upload Speed: 921600
+Upload Speed: 115200
 CPU Frequency: 240 MHz
 Flash Frequency: 80 MHz
 Partition Scheme: Default 4MB with spiffs
@@ -80,54 +80,46 @@ Baud Rate: 115200
 ## 🔋 External Power & Wiring (Strongly Recommended)
 
 - Use a 4×AA battery pack (~6 V) to power the servo and buzzer only; power the ESP32 separately (USB or a 5 V module).
-- Wiring notes:
-  - Servo V+ and buzzer V+ connect to the battery pack positive; their GND connect to the battery pack negative.
-  - Tie the battery GND to ESP32 GND (mandatory, common ground).
-  - Servo signal remains on ESP32 GPIO 18; buzzer signal on GPIO 19 (as in code).
-- Why: In testing, ESP32 alone could not reliably power the whole system; the device might fail to boot or keep rebooting.
-- Tip: For high current loads, add a 220–470 µF electrolytic capacitor across the battery pack to reduce supply ripple.
+- Breadboard rails:
+  - 3.3 V rail (from ESP32): connect LCD (I2C) and HX711
+  - 5 V rail (from AA battery pack): connect servo and buzzer
+- Common ground: tie battery GND to ESP32 GND (mandatory).
+- Signals: servo signal on GPIO 18; buzzer signal on GPIO 19 (as in code).
+- Recommended decoupling:
+  - On 5 V rail: 470 µF electrolytic + several 100 nF ceramic capacitors
+  - On 3.3 V rail: 10 µF electrolytic + several 100 nF ceramic capacitors
+- Why: ESP32 alone cannot reliably supply the whole system; brownouts may prevent booting.
 
 ---
 
 ## 🔗 First‑Time Calibration & Pairing (Required)
 
-Follow these steps to read each device’s MAC address and calibrate HX711 thresholds.
+Follow these steps to read each device’s MAC address and calibrate HX711 thresholds, then paste values into firmware.
 
 1. Flash `TestingBeforeStart/TestingBeforeStart.ino` to both devices.
-1. Open the Serial Monitor (115200) and follow the LCD prompts to take two samples:
-   - Empty platform → record NO_PHONE_VAL
-   - Phone on platform → record WITH_PHONE_VAL
-   - The sketch prints a recommended DETECT_MARGIN
-   - It also prints the device’s STA MAC address (for ESP‑NOW pairing)
-1. Record each device’s values and MAC:
-   - Device A: NO_PHONE_VAL_A, WITH_PHONE_VAL_A, DETECT_MARGIN_A, MAC_A
-   - Device B: NO_PHONE_VAL_B, WITH_PHONE_VAL_B, DETECT_MARGIN_B, MAC_B
-1. Edit the runtime firmware:
-   - Open `Device_A/Device_A.ino` and update the top configuration:
+2. Open the Serial Monitor (115200) and follow the LCD prompts to take two samples.
+   - Empty platform → NO_PHONE_VAL
+   - Phone on platform → WITH_PHONE_VAL
+   - The sketch prints a recommended DETECT_MARGIN and the device’s STA MAC.
+   - Then copy directly into code (see screenshot):
+
+     ![Calibration output example](./Static/TestingBeforeStart.png)
+
+     - Copy the highlighted "Device MAC (STA)" into the other device’s `PEER_MAC`.
+     - Copy the three lines under "=== Recommended Config ===" into this device’s code at `// HX711 thresholds — paste the three recommended values from TestingBeforeStart here`, replacing `NO_PHONE_VAL`, `WITH_PHONE_VAL`, and `DETECT_MARGIN`.
+3. Edit the runtime firmware top config:
+   - `Device_A/Device_A.ino`:
      - Keep `#define IS_A_SIDE 1` (A sends START once both are READY)
      - Set `MY_NAME = "A"`
-     - Set `PEER_MAC` to B’s MAC_B
-     - Replace NO_PHONE_VAL/WITH_PHONE_VAL/DETECT_MARGIN with A’s measured values
-   - Open `Device_B/Device_B.ino` and update the top configuration:
+     - Set `PEER_MAC` to B’s MAC (from step 2)
+   - `Device_B/Device_B.ino`:
      - Do not define `IS_A_SIDE` (B waits for A’s START)
      - Set `MY_NAME = "B"`
-     - Set `PEER_MAC` to A’s MAC_A
-     - Replace NO_PHONE_VAL/WITH_PHONE_VAL/DETECT_MARGIN with B’s measured values
-1. Upload A/B firmware to their respective devices.
-1. Power on, press the buttons on both devices to enter READY:
+     - Set `PEER_MAC` to A’s MAC (from step 2)
+4. Upload A/B firmware to their respective devices.
+5. Power on, press the buttons on both devices to enter READY:
    - A will automatically send START when both are READY, starting the synchronized timer.
    - If either phone is lifted, both devices buzz and show messages; restoring the phone resumes focus mode.
-
-### Tips
-
-- ESP‑NOW channel is fixed to 1 in code; both devices must match (already the default).
-
-### One‑Screenshot Quick Start
-
-![Calibration output example](./Static/TestingBeforeStart.png)
-
-- Copy the highlighted "Device MAC (STA)" into the other device’s `PEER_MAC`.
-- Copy the three lines under "=== Recommended Config ===" into this device’s code at `// HX711 thresholds — paste the three recommended values from TestingBeforeStart here`, replacing `NO_PHONE_VAL`, `WITH_PHONE_VAL`, and `DETECT_MARGIN`.
 
 ### A/B Differences
 
@@ -139,21 +131,15 @@ Both firmwares share the same logic; the only differences are in the top configu
 
 ---
 
-## 🧩 Operation Flow
+## 🚀 How to Use
 
-[IDLE] → Press button → [WAIT_PHONE]
-↓
-Phone placed on load cell → [FOCUS 25:00]
-↓
-If phone removed → [ALERT on both devices]
-↓
-Phone replaced → [WAIT_PHONE]
-↓
-After cycle → [BREAK 5:00] → repeat
+1. Power on both devices.
+2. Press the button on each ESP32 to enter READY.
+3. Place your phone on the load cell to start focus.
+4. Focus together for the configured duration.
+5. If one picks up their phone, both devices react; put the phone back to resume.
 
----
-
-## 📄 Display Messages
+### LCD During Each Stage
 
 | State | LCD Message |
 |-------|-------------|
@@ -163,17 +149,6 @@ After cycle → [BREAK 5:00] → repeat
 | ALERT (self) | Phone moved! / Put phone back! |
 | ALERT (partner) | Partner moved! / Put phone back! |
 | BREAK | Break time / Relax 05:00 |
-
----
-
-## 🚀 How to Use
-
-1. Power on both devices.
-2. Press the button on each ESP32 to enter ready mode.
-3. Place your phone on the load cell.
-4. Focus together for 25 minutes.
-5. If one picks up their phone, both devices react.
-6. Put the phone back to resume and start again.
 
 ---
 
@@ -189,22 +164,20 @@ After cycle → [BREAK 5:00] → repeat
 
 ## 🧩 Future Improvements
 
-- Multi‑user group focus
-- Bluetooth app control
-- Online data logging via Wi‑Fi
-- Adjustable focus time
-- Power management & battery mode
+- Multi‑user group focus; move to Wi‑Fi networking with a server‑hosted database to replace ESP‑NOW and support multi‑user sessions
+- Bluetooth/app/web control to replace the physical button and add social features
+- Adjustable focus/break durations, power management & battery optimizations
 
 ---
 
 ## 🛠️ Troubleshooting
 
-- Won’t boot or random reboots: power the servo and buzzer from the AA pack and ensure common ground.
-- Buzzer silent: check wiring; module should be active‑high by default.
-- Servo jitter/weak torque: ensure external power, proper wiring gauge, solid ground; add 220–470 µF capacitor.
-- LCD blank: confirm I2C address 0x27 and pins SDA=21, SCL=22.
-- ESP‑NOW pairing fails: ensure both use the same channel (default 1) and peer MACs are correct (A uses B’s MAC, B uses A’s MAC).
-- False triggers/no trigger: re‑run `TestingBeforeStart` and replace the three recommended values in the HX711 section of each device’s code.
+- Won’t boot or random reboots: power the servo and buzzer from the AA pack, ensure common ground, and press the ESP32 reset button if needed.
+- Buzzer silent: check wiring; module is active‑high by default.
+- Servo jitter/weak torque: ensure external power, proper wiring gauge, solid ground; add a 220–470 µF capacitor.
+- LCD blank: confirm I2C address 0x27 and pins SDA=21, SCL=22; if voltage ripple is suspected, press the ESP32 reset button.
+- ESP‑NOW pairing fails: ensure both use the same channel (default 1) and peer MACs are correct (A uses B’s MAC; B uses A’s MAC).
+- False triggers/no trigger: re‑run `TestingBeforeStart` and replace the three recommended HX711 values in each device’s code.
 
 ---
 
@@ -215,9 +188,4 @@ please visit the Project Wiki (./wiki).
 
 ---
 
-## 🪪 License
-
-MIT License © 2025
-Created by Allen + ChatGPT Engineering
 > "When focus becomes social, distraction turns into cooperation."
-
