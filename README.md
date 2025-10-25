@@ -185,5 +185,3 @@ Both firmwares share the same logic; the only differences are in the top configu
 
 For wiring diagrams, timing charts, and detailed source notes,
 please visit the Project Wiki (./wiki).
-
-> "When focus becomes social, distraction turns into cooperation."
